@@ -1,0 +1,30 @@
+# Models (large files)
+models/*.gguf
+models/*.bin
+
+# Results (regeneratable)
+results/
+
+# llama.cpp build
+llama.cpp/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+*.egg-info/
+venv/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.log

@@ -1,0 +1,91 @@
+{
+    "description": "Phase 1 Experiment Matrix for Bounded Real-Time LLM Inference",
+    "experiments": {
+        "baseline_characterization": {
+            "description": "Baseline variance characterization with default settings",
+            "configs": [
+                "baseline_greedy.json"
+            ],
+            "iterations": 50,
+            "environment": "default"
+        },
+        "sampling_comparison": {
+            "description": "Compare execution variance across sampling strategies",
+            "configs": [
+                "baseline_greedy.json",
+                "sampling_temperature.json",
+                "sampling_top_k.json"
+            ],
+            "iterations": 50,
+            "environment": "default",
+            "hypothesis": "Execution latency variance should be independent of sampling strategy"
+        },
+        "isolated_environment": {
+            "description": "Isolated environment with CPU pinning and memory locking",
+            "configs": [
+                "isolated_pinned.json"
+            ],
+            "iterations": 50,
+            "environment": "isolated",
+            "setup_script": "prepare_system.sh isolate"
+        },
+        "context_sweep": {
+            "description": "Vary context length to measure scaling behavior",
+            "base_config": "baseline_greedy.json",
+            "variable": "context_length",
+            "values": [512, 1024, 2048, 4096],
+            "iterations": 30,
+            "environment": "isolated"
+        },
+        "thread_sweep": {
+            "description": "Vary thread count to measure parallelism effects",
+            "base_config": "baseline_greedy.json",
+            "variable": "threads",
+            "values": [1, 2, 4, 8],
+            "iterations": 30,
+            "environment": "isolated"
+        },
+        "output_length_sweep": {
+            "description": "Vary output length to measure generation scaling",
+            "base_config": "baseline_greedy.json",
+            "variable": "output_tokens",
+            "values": [32, 64, 128, 256],
+            "iterations": 30,
+            "environment": "isolated"
+        }
+    },
+    "models": {
+        "tinyllama_1b": {
+            "name": "TinyLlama-1.1B",
+            "path": "models/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf",
+            "parameters": "1.1B",
+            "quantizations": ["Q8_0", "Q5_K_M", "Q4_K_M", "Q4_0"]
+        },
+        "phi2": {
+            "name": "Phi-2",
+            "path": "models/phi-2.Q4_K_M.gguf",
+            "parameters": "2.7B",
+            "quantizations": ["Q8_0", "Q5_K_M", "Q4_K_M", "Q4_0"]
+        },
+        "stablelm_zephyr": {
+            "name": "StableLM-Zephyr-3B",
+            "path": "models/stablelm-zephyr-3b.Q4_K_M.gguf",
+            "parameters": "3B",
+            "quantizations": ["Q5_K_M", "Q4_K_M", "Q4_0"]
+        }
+    },
+    "prompts": {
+        "coding": "Explain the concept of recursion in programming. Provide a simple example.",
+        "reasoning": "If all roses are flowers and some flowers fade quickly, can we conclude that some roses fade quickly? Explain your reasoning.",
+        "factual": "What are the main differences between TCP and UDP protocols?",
+        "creative": "Write a haiku about a morning sunrise over the ocean."
+    },
+    "metrics_of_interest": [
+        "token_latency_p99_ms",
+        "token_latency_max_ms",
+        "run_max_latency_max_ms",
+        "peak_rss_max_mb",
+        "token_latency_cv",
+        "peak_rss_cv"
+    ]
+}

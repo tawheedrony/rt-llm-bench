@@ -1,0 +1,21 @@
+{
+    "name": "baseline_greedy",
+    "model_path": "models/SmolLM2.q8.gguf",
+    "prompt": "Once upon a time in a land far away, there lived a wise old wizard who",
+    "context_length": 2048,
+    "output_tokens": 128,
+    "threads": 4,
+    "sampling": "greedy",
+    "temperature": 0.0,
+    "top_k": 1,
+    "top_p": 1.0,
+    "seed": 42,
+    "mlock": false,
+    "mmap": true,
+    "iterations": 50,
+    "warmup_runs": 3,
+    "cooldown_seconds": 1.0,
+    "pin_threads": false,
+    "cpu_cores": "0-3",
+    "disable_turbo": false
+}
