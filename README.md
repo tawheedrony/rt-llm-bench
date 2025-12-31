@@ -1,4 +1,4 @@
-# Bounded Real-Time LLM Inference Benchmark
+# RT-LLM-Bench: Bounded Real-Time LLM Inference Benchmark
 
 A reproducible benchmark harness for evaluating bounded, real-time inference behavior of small LLMs using llama.cpp. This is a **configuration-only study** - no llama.cpp source modifications.
 
@@ -16,17 +16,14 @@ Gather measurable, systems-level evidence that bounded LLM inference is achievab
 # 1. Setup llama.cpp (pins to specific commit)
 ./scripts/setup_llamacpp.sh
 
-# 2. Download a test model
+# 2. Download test models
 ./scripts/download_models.sh recommended
 
-# 3. Run baseline experiment
-python scripts/run_experiment.py \
-    -m models/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf \
-    -n baseline \
-    -i 50
+# 3. Run comprehensive experiments (all models x all sampling strategies)
+./scripts/run_all_experiments.sh
 
-# 4. Analyze results
-python scripts/analyze_results.py variance results/baseline/<timestamp>
+# 4. Analyze and compare results
+python scripts/analyze_results.py compare results/*_greedy/*/ results/*_temperature/*/
 ```
 
 ## Directory Structure
@@ -34,25 +31,101 @@ python scripts/analyze_results.py variance results/baseline/<timestamp>
 ```
 rt-llm-bench/
 ├── scripts/
-│   ├── setup_llamacpp.sh     # Build llama.cpp at pinned version
-│   ├── download_models.sh    # Download GGUF models
-│   ├── benchmark.py          # Single benchmark run
-│   ├── run_experiment.py     # Multi-run experiment orchestration
-│   ├── analyze_results.py    # Analysis and visualization
-│   └── prepare_system.sh     # System configuration for isolated tests
+│   ├── setup_llamacpp.sh        # Build llama.cpp at pinned version
+│   ├── download_models.sh       # Download GGUF models
+│   ├── benchmark.py             # Single benchmark run
+│   ├── run_experiment.py        # Multi-run experiment orchestration
+│   ├── run_all_experiments.sh   # Run all models x all sampling strategies
+│   ├── run_all_models.sh        # Run all models with single config
+│   ├── analyze_results.py       # Analysis and visualization
+│   └── prepare_system.sh        # System configuration for isolated tests
 ├── configs/
-│   ├── baseline_greedy.json  # Greedy sampling baseline
-│   ├── sampling_*.json       # Different sampling strategies
-│   ├── isolated_pinned.json  # CPU-pinned, memory-locked config
-│   └── experiment_matrix.json # Full experiment plan
-├── results/                  # Benchmark output (gitignored)
-├── models/                   # GGUF models (gitignored)
-├── analysis/                 # Generated reports and plots
-├── docs/                     # Provenance and documentation
-└── llama.cpp/               # Cloned llama.cpp (gitignored)
+│   ├── baseline_greedy.json     # Greedy sampling baseline
+│   ├── sampling_temperature.json # Temperature-based sampling
+│   ├── sampling_top_k.json      # Top-K sampling
+│   ├── sampling_top_p.json      # Top-P (nucleus) sampling
+│   ├── isolated_pinned.json     # CPU-pinned, memory-locked config
+│   └── experiment_matrix.json   # Full experiment plan
+├── results/                     # Benchmark output (gitignored)
+├── models/                      # GGUF models (gitignored)
+├── analysis/                    # Generated reports and plots
+├── docs/                        # Provenance and documentation
+└── llama.cpp/                   # Cloned llama.cpp (gitignored)
 ```
 
-## Benchmark Harness
+## Running Experiments
+
+### Comprehensive Experiments (All Models x All Sampling)
+
+The `run_all_experiments.sh` script runs a full matrix of experiments across all available models and sampling strategies:
+
+```bash
+# Run all models with all sampling strategies (default: 30 iterations each)
+./scripts/run_all_experiments.sh
+
+# Run with more iterations
+./scripts/run_all_experiments.sh -i 50
+
+# Run specific models only
+./scripts/run_all_experiments.sh -m gemma3-270m,llama3.2-1b
+
+# Run specific sampling strategies only
+./scripts/run_all_experiments.sh -s greedy,temperature
+
+# Run with isolated environment settings
+./scripts/run_all_experiments.sh --pin-cpu --mlock
+
+# Quick test run
+./scripts/run_all_experiments.sh -m gemma3-270m -s greedy -i 5
+
+# Dry run to see what would be executed
+./scripts/run_all_experiments.sh --dry-run
+```
+
+**Available Options:**
+| Option | Description | Default |
+|--------|-------------|---------|
+| `-m, --models` | Comma-separated model list | all |
+| `-s, --sampling` | Comma-separated sampling strategies | all |
+| `-i, --iterations` | Runs per experiment | 30 |
+| `-w, --warmup` | Warmup runs | 3 |
+| `-t, --threads` | Thread count | 4 |
+| `-n, --tokens` | Output tokens | 128 |
+| `-c, --context` | Context length | 2048 |
+| `-o, --output` | Output directory | results/ |
+| `--pin-cpu` | Enable CPU pinning | off |
+| `--mlock` | Enable memory locking | off |
+| `--dry-run` | Preview without executing | - |
+
+All runs are automatically logged to `results/log_run_YYYYMMDD_HHMMSS.log`.
+
+### Available Models
+
+| Model | Size | Description |
+|-------|------|-------------|
+| `gemma3-270m` | 279MB | Smallest, edge device focused |
+| `gemma3-1b` | 1.0GB | Google's efficient 1B |
+| `llama3.2-1b` | 1.3GB | Meta's efficient 1B |
+| `deepseek-r1-1.5b` | 1.8GB | Reasoning-focused distilled model |
+| `smollm2-1.7b` | ~1.8GB | Efficient 1.7B model |
+
+### Sampling Strategies
+
+| Strategy | Flag | Parameters | Description |
+|----------|------|------------|-------------|
+| `greedy` | `--sampling greedy` | temp=0.0 | Deterministic, always picks max probability |
+| `temperature` | `--sampling temperature` | temp=0.8 | Softmax temperature sampling |
+| `top_k` | `--sampling top_k` | temp=0.8, k=40 | Sample from top K tokens |
+| `top_p` | `--sampling top_p` | temp=0.8, p=0.9 | Nucleus sampling |
+
+All sampling strategies are tested to verify execution time variance is sampling-independent.
+
+### Single Model Experiments
+
+```bash
+# Run all models with a single configuration
+./scripts/run_all_models.sh 30  # 30 iterations per model
+```
 
 ### Single Run
 
@@ -66,7 +139,7 @@ python scripts/benchmark.py \
     --sampling greedy     # sampling strategy
 ```
 
-### Experiment (Multiple Runs)
+### Multi-Run Experiment
 
 ```bash
 python scripts/run_experiment.py \
@@ -79,20 +152,24 @@ python scripts/run_experiment.py \
     --mlock               # memory locking
 ```
 
-### Sampling Strategies
+### Config-Based Experiments
 
-All strategies are tested to verify execution determinism is independent of sampling:
+```bash
+# Run from config file
+python scripts/run_experiment.py -c configs/baseline_greedy.json
 
-| Strategy | Flag | Description |
-|----------|------|-------------|
-| Greedy | `--sampling greedy` | Always pick highest probability token |
-| Temperature | `--sampling temperature --temp 0.8` | Softmax temperature sampling |
-| Top-K | `--sampling top_k --top-k 40` | Sample from top K tokens |
-| Top-P | `--sampling top_p --top-p 0.9` | Nucleus sampling |
+# Available configs
+ls configs/
+# baseline_greedy.json      - Deterministic baseline
+# sampling_temperature.json - Temperature sampling
+# sampling_top_k.json       - Top-K sampling
+# sampling_top_p.json       - Top-P (nucleus) sampling
+# isolated_pinned.json      - CPU-pinned with mlock
+```
 
 ## System Configuration
 
-### Isolated Environment (Recommended for Phase 1)
+### Isolated Environment (Recommended)
 
 ```bash
 # Show current system state
@@ -102,13 +179,13 @@ All strategies are tested to verify execution determinism is independent of samp
 sudo ./scripts/prepare_system.sh isolate
 
 # Run experiment with CPU pinning
-python scripts/run_experiment.py -m <model> --pin-cpu --cpu-cores "0-3"
+./scripts/run_all_experiments.sh --pin-cpu --cpu-cores "0-3" --mlock
 
 # Restore defaults
 sudo ./scripts/prepare_system.sh restore
 ```
 
-### Contended Environment (Phase 2)
+### Contended Environment
 
 ```bash
 # Show background load options
@@ -116,29 +193,40 @@ sudo ./scripts/prepare_system.sh restore
 
 # Example: 50% CPU load
 stress-ng --cpu 2 --cpu-load 50 &
-python scripts/run_experiment.py -m <model> -n contended_50pct
+./scripts/run_all_experiments.sh -m gemma3-270m -s greedy
 pkill stress-ng
 ```
 
 ## Analysis Tools
 
 ```bash
-# Variance analysis
-python scripts/analyze_results.py variance results/baseline/<timestamp>
+# Variance analysis for a single experiment
+python scripts/analyze_results.py variance results/gemma3-270m_greedy/<timestamp>
 
-# Compare experiments (first is baseline)
+# Compare multiple experiments (first is baseline)
 python scripts/analyze_results.py compare \
-    results/baseline/<ts> \
-    results/isolated/<ts>
+    results/gemma3-270m_greedy/*/ \
+    results/gemma3-270m_temperature/*/ \
+    results/gemma3-270m_top_k/*/
+
+# Compare all models with greedy sampling
+python scripts/analyze_results.py compare results/*_greedy/*/
+
+# Compare sampling strategies for a single model
+python scripts/analyze_results.py compare \
+    results/llama3.2-1b_greedy/*/ \
+    results/llama3.2-1b_temperature/*/ \
+    results/llama3.2-1b_top_k/*/ \
+    results/llama3.2-1b_top_p/*/
 
 # Generate histogram
-python scripts/analyze_results.py histogram results/baseline/<ts> -o hist.png
+python scripts/analyze_results.py histogram results/gemma3-270m_greedy/*/ -o hist.png
 
 # Run-by-run plot
-python scripts/analyze_results.py runs results/baseline/<ts> -o runs.png
+python scripts/analyze_results.py runs results/gemma3-270m_greedy/*/ -o runs.png
 
 # Markdown report
-python scripts/analyze_results.py report results/baseline/<ts> -o report.md
+python scripts/analyze_results.py report results/gemma3-270m_greedy/*/ -o report.md
 ```
 
 ## Metrics Collected
@@ -158,20 +246,41 @@ python scripts/analyze_results.py report results/baseline/<ts> -o report.md
 - **P99 Stability**: Does p99 vary significantly run-to-run?
 - **RSS Jitter**: Memory variance between identical runs
 
-## Phase 1 Experiments
+## Experiment Matrix
 
-1. **Baseline Characterization**: 50+ runs with default settings, measure variance
-2. **Sampling Comparison**: Verify execution time is sampling-independent
-3. **Isolated Environment**: CPU pinning, mlock, governor=performance
-4. **Parameter Sweeps**: Context length, thread count, output length
+The full experiment plan supports these sweeps:
 
-## Recommended Models
+| Experiment Type | Variable | Values |
+|----------------|----------|--------|
+| Baseline | - | Default settings, 50 runs |
+| Sampling | Strategy | greedy, temperature, top_k, top_p |
+| Context | Length | 512, 1024, 2048, 4096 |
+| Threads | Count | 1, 2, 4, 8 |
+| Output | Tokens | 32, 64, 128, 256 |
+| Environment | Isolation | default, pinned, mlock |
 
-| Model | Parameters | Size (Q4) | Use Case |
-|-------|------------|-----------|----------|
-| TinyLlama 1.1B | 1.1B | ~640MB | Primary test model, fastest |
-| Qwen2 0.5B | 0.5B | ~530MB | Extremely small, edge devices |
-| Phi-2 | 2.7B | ~1.6GB | Upper bound of target range |
+## Example Workflow
+
+```bash
+# 1. Setup environment
+./scripts/setup_llamacpp.sh
+./scripts/download_models.sh recommended
+
+# 2. Run baseline experiments (all models, greedy only)
+./scripts/run_all_experiments.sh -s greedy -i 50
+
+# 3. Run sampling comparison
+./scripts/run_all_experiments.sh -s temperature,top_k,top_p -i 50
+
+# 4. Run isolated environment experiments
+sudo ./scripts/prepare_system.sh isolate
+./scripts/run_all_experiments.sh -s greedy --pin-cpu --mlock -i 50
+sudo ./scripts/prepare_system.sh restore
+
+# 5. Analyze results
+python scripts/analyze_results.py compare results/*_greedy/*/
+python scripts/analyze_results.py compare results/gemma3-270m_*/*/
+```
 
 ## Requirements
 
@@ -208,3 +317,18 @@ Phase 1 is successful if we can show:
 2. **Memory stability**: peak RSS varies minimally between runs (CV < 5%)
 3. **Sampling independence**: execution variance is consistent across sampling strategies
 4. **Clear baseline metrics**: documented variance for comparison with optimizations
+
+## Results Naming Convention
+
+Experiments are saved with the naming pattern: `{model}_{sampling}/`
+
+Examples:
+- `results/gemma3-270m_greedy/` - Gemma 270M with greedy sampling
+- `results/llama3.2-1b_temperature/` - Llama 3.2 1B with temperature sampling
+- `results/deepseek-r1-1.5b_top_p/` - DeepSeek R1 1.5B with nucleus sampling
+
+Each experiment directory contains:
+- `config.json` - Exact configuration used
+- `aggregated.json` - Summary statistics
+- `all_results.json` - All run data
+- `runs/run_*.json` - Individual run results
