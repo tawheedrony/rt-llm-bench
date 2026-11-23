@@ -131,25 +131,25 @@ All sampling strategies are tested to verify execution time variance is sampling
 
 ```bash
 python scripts/benchmark.py \
-    -m <model.gguf> \
+    -m "models/your-model.gguf" \
     -p "Your prompt here" \
-    -n 128 \              # output tokens
-    -c 2048 \             # context length
-    -t 4 \                # threads
-    --sampling greedy     # sampling strategy
+    -n 128 \
+    -c 2048 \
+    -t 4 \
+    --sampling greedy
 ```
 
 ### Multi-Run Experiment
 
 ```bash
 python scripts/run_experiment.py \
-    -m <model.gguf> \
+    -m "models/your-model.gguf" \
     -n experiment_name \
-    -i 50 \               # iterations
-    --warmup 3 \          # warmup runs
+    -i 50 \
+    --warmup 3 \
     --sampling greedy \
-    --pin-cpu \           # CPU pinning (taskset)
-    --mlock               # memory locking
+    --pin-cpu \
+    --mlock
 ```
 
 ### Config-Based Experiments
